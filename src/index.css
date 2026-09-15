@@ -1,0 +1,151 @@
+/* stylelint-disable */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Nexora Master Class Design System
+   Primary: #1B3A6B (deep navy)  Accent: #2563EB (electric blue)  WA: #25D366 (whatsapp green)
+   All colors are HSL.
+*/
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+    /* Navy-based palette */
+    --background: 213 33% 97%;          /* #F7F9FC */
+    --foreground: 216 58% 12%;          /* #0F1A2E */
+    --card: 0 0% 100%;                  /* #FFFFFF */
+    --card-foreground: 216 58% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 216 58% 12%;
+    --primary: 216 59% 26%;             /* #1B3A6B */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 216 51% 36%;           /* #2C4F8C */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 213 38% 93%;               /* #EDF1F8 */
+    --muted-foreground: 216 20% 45%;
+    --accent: 217 91% 60%;              /* #2563EB */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 27% 83%;              /* #D1D9E6 */
+    --input: 214 27% 83%;
+    --ring: 217 91% 60%;
+    /* Sidebar */
+    --sidebar-background: 216 59% 26%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 216 51% 36%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 216 40% 40%;
+    --sidebar-ring: 217 91% 60%;
+    /* Custom tokens */
+    --whatsapp: 142 71% 45%;            /* #25D366 */
+    --navy-dark: 216 59% 16%;           /* hero dark section */
+    --education-blue: 217 91% 60%;
+    --education-green: 142 71% 45%;
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --info: 217 91% 60%;
+    /* Shadows */
+    --shadow-card: 0 1px 3px 0 rgb(27 58 107 / 0.08), 0 1px 2px -1px rgb(27 58 107 / 0.06);
+    --shadow-hover: 0 4px 12px 0 rgb(27 58 107 / 0.15);
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, #1B3A6B 0%, #2C4F8C 100%);
+    --gradient-card: linear-gradient(135deg, #F7F9FC 0%, #EDF1F8 100%);
+    --gradient-background: linear-gradient(180deg, #F7F9FC 0%, #EDF1F8 100%);
+  }
+
+  /* Dark mode not toggled by user — website is light-only */
+  .dark {
+    --background: 216 59% 10%;
+    --foreground: 213 33% 97%;
+    --card: 216 59% 14%;
+    --card-foreground: 213 33% 97%;
+    --popover: 216 59% 14%;
+    --popover-foreground: 213 33% 97%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 216 51% 36%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 216 40% 20%;
+    --muted-foreground: 213 20% 65%;
+    --accent: 217 91% 60%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 216 40% 25%;
+    --input: 216 40% 25%;
+    --ring: 217 91% 60%;
+    --sidebar-background: 216 59% 10%;
+    --sidebar-foreground: 213 33% 97%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 216 51% 20%;
+    --sidebar-accent-foreground: 213 33% 97%;
+    --sidebar-border: 216 40% 20%;
+    --sidebar-ring: 217 91% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+  }
+}
+
+/* Utility classes */
+@layer utilities {
+  .section-divider {
+    @apply border-t border-border;
+  }
+
+  .nav-section {
+    @apply scroll-mt-20;
+  }
+
+  .whatsapp-btn {
+    background-color: #25D366;
+    color: #ffffff;
+  }
+
+  .whatsapp-btn:hover {
+    background-color: #1da851;
+  }
+
+  .navy-section {
+    background-color: #1B3A6B;
+    color: #ffffff;
+  }
+
+  .text-on-navy {
+    color: #ffffff;
+  }
+
+  .accent-rule::before {
+    content: '';
+    display: block;
+    width: 3rem;
+    height: 3px;
+    background-color: hsl(var(--accent));
+    margin-bottom: 1rem;
+  }
+}
