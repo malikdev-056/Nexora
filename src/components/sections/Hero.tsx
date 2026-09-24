@@ -64,14 +64,7 @@ const Hero: React.FC = () => {
             </div>
 
             {/* CTAs */}
-            <div className="flex flex-wrap gap-4 mb-10">
-              <button
-                onClick={handleWhatsApp}
-                className="whatsapp-btn flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-base transition-all duration-150 hover:scale-[1.02] active:scale-100 shadow-lg"
-              >
-                <MessageCircle className="w-5 h-5" />
-                Start Learning — WhatsApp Us
-              </button>
+            <div className="flex flex-wrap gap-4 mb-6">
               <button
                 onClick={handleExploreCourses}
                 className="flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-base border border-white/40 text-white bg-white/5 hover:bg-white/10 transition-colors duration-150"

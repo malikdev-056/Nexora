@@ -1,6 +1,7 @@
-import React from 'react';
-import { MousePointer2, MessageCircle, FileText, CreditCard, GraduationCap } from 'lucide-react';
+import React, { useState } from 'react';
+import { MousePointer2, MessageCircle, FileText, CreditCard, GraduationCap, Download } from 'lucide-react';
 import { getWhatsAppLink, trackWhatsAppClick } from '@/config/tracking';
+import { lookupCertificateByStudentCode } from '@/lib/api';
 
 const steps = [
   {
@@ -36,9 +37,49 @@ const steps = [
 ];
 
 const HowItWorks: React.FC = () => {
+  const [studentCode, setStudentCode] = useState('');
+  const [statusMessage, setStatusMessage] = useState('');
+  const [statusType, setStatusType] = useState<'success' | 'error' | ''>('');
+
   const handleWhatsApp = () => {
     trackWhatsAppClick('how_it_works');
     window.open(getWhatsAppLink("Hi Nexora! I'd like to enroll in a course. Please share the steps."), '_blank');
+  };
+
+  const handleCertificateLookup = async () => {
+    const trimmedCode = studentCode.trim();
+    if (!trimmedCode) {
+      setStatusType('error');
+      setStatusMessage('Please enter your student ID first.');
+      return;
+    }
+
+    try {
+      setStatusType('');
+      setStatusMessage('Checking your certificate...');
+      const result = await lookupCertificateByStudentCode(trimmedCode);
+
+      const fileResponse = await fetch(result.fileUrl);
+      if (!fileResponse.ok) {
+        throw new Error('Certificate could not be downloaded right now.');
+      }
+
+      const blob = await fileResponse.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = result.fileName || `${result.studentCode}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+
+      setStatusType('success');
+      setStatusMessage(`Certificate found for ${result.studentName}. Download started.`);
+    } catch (error) {
+      setStatusType('error');
+      setStatusMessage(error instanceof Error ? error.message : 'No certificate was found for this student ID.');
+    }
   };
 
   return (
@@ -87,6 +128,39 @@ const HowItWorks: React.FC = () => {
             <MessageCircle className="w-6 h-6" />
             Start Your Enrollment — WhatsApp Us Now
           </button>
+        </div>
+
+        <div className="mt-8 max-w-xl mx-auto rounded-2xl border border-border bg-white p-5 shadow-card">
+          <div className="mb-3 flex items-center gap-2 text-slate-900">
+            <Download className="h-4 w-4 text-accent" />
+            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-accent">Download Your Certificate</span>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <input
+              value={studentCode}
+              onChange={(event) => setStudentCode(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  void handleCertificateLookup();
+                }
+              }}
+              placeholder="Enter your student ID"
+              className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none ring-0 focus:border-accent"
+            />
+            <button
+              onClick={() => void handleCertificateLookup()}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-blue-700"
+            >
+              <Download className="h-4 w-4" />
+              Download
+            </button>
+          </div>
+          {statusMessage && (
+            <p className={`mt-3 text-sm ${statusType === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>
+              {statusMessage}
+            </p>
+          )}
         </div>
       </div>
     </section>

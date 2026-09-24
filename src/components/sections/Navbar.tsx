@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { MessageCircle, Menu, X, GraduationCap } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Download, Menu, X, GraduationCap, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { getWhatsAppLink, trackWhatsAppClick } from '@/config/tracking';
 
 const navItems = [
   { label: 'Home', href: '#home' },
@@ -15,6 +15,7 @@ const navItems = [
 ];
 
 const Navbar: React.FC = () => {
+  const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -30,9 +31,15 @@ const Navbar: React.FC = () => {
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleWhatsApp = () => {
-    trackWhatsAppClick('navbar');
-    window.open(getWhatsAppLink('Hi Nexora! I want to know more about your courses.'), '_blank');
+  const handleCertificateScroll = () => {
+    const el = document.querySelector('#how-it-works');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleAdminLogin = () => {
+    navigate('/admin/login');
   };
 
   return (
@@ -72,13 +79,20 @@ const Navbar: React.FC = () => {
           </nav>
 
           {/* Desktop CTA */}
-          <div className="hidden md:block shrink-0">
+          <div className="hidden md:flex items-center gap-3 shrink-0">
             <button
-              onClick={handleWhatsApp}
-              className="whatsapp-btn flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-colors duration-150"
+              onClick={handleAdminLogin}
+              className="flex items-center gap-2 rounded-md border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/20"
             >
-              <MessageCircle className="w-4 h-4" />
-              Chat on WhatsApp
+              <LogIn className="w-4 h-4" />
+              Login
+            </button>
+            <button
+              onClick={handleCertificateScroll}
+              className="flex items-center gap-2 rounded-md bg-blue-400 px-4 py-2 text-sm font-semibold text-slate-950 transition-colors hover:bg-blue-300"
+            >
+              <Download className="w-4 h-4" />
+              Download Your Certificate
             </button>
           </div>
 
@@ -117,13 +131,20 @@ const Navbar: React.FC = () => {
                     {item.label}
                   </button>
                 ))}
-                <div className="pt-4 pb-2">
+                <div className="pt-4 pb-2 space-y-2">
                   <button
-                    onClick={() => { setMobileOpen(false); handleWhatsApp(); }}
-                    className="whatsapp-btn w-full flex items-center justify-center gap-2 px-4 py-3 rounded-md font-semibold transition-colors"
+                    onClick={() => { setMobileOpen(false); handleAdminLogin(); }}
+                    className="w-full flex items-center justify-center gap-2 rounded-md border border-white/20 bg-white/10 px-4 py-3 font-semibold text-white transition-colors hover:bg-white/20"
                   >
-                    <MessageCircle className="w-5 h-5" />
-                    Chat on WhatsApp
+                    <LogIn className="w-5 h-5" />
+                    Login
+                  </button>
+                  <button
+                    onClick={() => { setMobileOpen(false); handleCertificateScroll(); }}
+                    className="w-full flex items-center justify-center gap-2 rounded-md bg-blue-400 px-4 py-3 font-semibold text-slate-950 transition-colors hover:bg-blue-300"
+                  >
+                    <Download className="w-5 h-5" />
+                    Download Your Certificate
                   </button>
                 </div>
               </nav>
