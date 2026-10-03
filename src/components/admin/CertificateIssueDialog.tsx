@@ -1,16 +1,17 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, UploadCloud, FileImage, X, Loader2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { uploadCertificateToBatch, type Student } from '@/lib/api';
+import { replaceCertificateInBatch, uploadCertificateToBatch, type Certificate, type Student } from '@/lib/api';
 
 interface CertificateIssueDialogProps {
   batchId: string;
   students: Student[];
   open: boolean;
+  certificate?: Certificate | null;
   onOpenChange: (open: boolean) => void;
-  onCertificateSaved: () => void;
+  onCertificateSaved: (certificate: Certificate) => void | Promise<void>;
 }
 
 const getInitials = (name: string) =>
@@ -27,6 +28,7 @@ const CertificateIssueDialog: React.FC<CertificateIssueDialogProps> = ({
   batchId,
   students,
   open,
+  certificate,
   onOpenChange,
   onCertificateSaved,
 }) => {
@@ -40,6 +42,22 @@ const CertificateIssueDialog: React.FC<CertificateIssueDialogProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedStudent = students.find((s) => s.id === selectedStudentId);
+
+  useEffect(() => {
+    if (!open) return;
+    const linkedStudent = certificate && students.find(
+      (student) => student.id === certificate.studentId || student.studentId === certificate.studentCode
+    );
+    setSelectedStudentId(linkedStudent?.id || '');
+    setStudentSearch('');
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setError('');
+  }, [open, certificate, students]);
+
+  useEffect(() => () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
 
   const filteredStudents = useMemo(() => {
     if (!studentSearch.trim()) return students;
@@ -103,16 +121,23 @@ const CertificateIssueDialog: React.FC<CertificateIssueDialogProps> = ({
       setSaving(true);
       setError('');
 
-      await uploadCertificateToBatch(batchId, {
-        studentId: selectedStudent.id,
-        studentName: selectedStudent.name,
-        studentCode: selectedStudent.studentId,
-        file: selectedFile,
-      });
+      const savedCertificate = certificate
+        ? await replaceCertificateInBatch(batchId, certificate.id, {
+            studentId: selectedStudent.id,
+            studentName: selectedStudent.name,
+            studentCode: selectedStudent.studentId,
+            file: selectedFile,
+          })
+        : await uploadCertificateToBatch(batchId, {
+            studentId: selectedStudent.id,
+            studentName: selectedStudent.name,
+            studentCode: selectedStudent.studentId,
+            file: selectedFile,
+          });
 
+      await onCertificateSaved(savedCertificate);
       resetForm();
       onOpenChange(false);
-      onCertificateSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save certificate');
     } finally {
@@ -130,8 +155,8 @@ const CertificateIssueDialog: React.FC<CertificateIssueDialogProps> = ({
     <Dialog open={open} onOpenChange={(next) => (!next ? handleClose() : onOpenChange(next))}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-slate-900">Issue Certificate</DialogTitle>
-          <p className="text-sm text-slate-500">Pick a student and upload their certificate image.</p>
+          <DialogTitle className="text-xl font-bold text-slate-900">{certificate ? 'Edit Certificate' : 'Issue Certificate'}</DialogTitle>
+          <p className="text-sm text-slate-500">Pick a student and {certificate ? 'upload a replacement' : 'upload'} certificate image.</p>
         </DialogHeader>
 
         <div className="space-y-5 py-2">
@@ -191,7 +216,9 @@ const CertificateIssueDialog: React.FC<CertificateIssueDialogProps> = ({
                       </button>
                     ))
                   ) : (
-                    <p className="px-3 py-3 text-center text-sm text-slate-400">No students found</p>
+                    <p className="px-3 py-3 text-center text-sm text-slate-400">
+                      {students.length === 0 ? 'All students in this batch already have certificates' : 'No students found'}
+                    </p>
                   )}
                 </div>
               </div>
@@ -265,12 +292,12 @@ const CertificateIssueDialog: React.FC<CertificateIssueDialogProps> = ({
             {saving ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Uploading...
+                {certificate ? 'Updating...' : 'Uploading...'}
               </>
             ) : (
               <>
                 <Check className="h-4 w-4" />
-                Upload Certificate
+                {certificate ? 'Update Certificate' : 'Upload Certificate'}
               </>
             )}
           </Button>

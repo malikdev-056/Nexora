@@ -85,6 +85,7 @@ export type Certificate = {
   studentName: string;
   fileName: string;
   fileUrl: string;
+  downloadUrl?: string;
   uploadedAt: string;
 };
 
@@ -179,22 +180,30 @@ export const uploadCertificateToBatch = async (batchId: string, payload: {
   formData.append('studentName', payload.studentName);
   formData.append('studentCode', payload.studentCode);
 
-  const response = await fetch(`${API_BASE_URL}/certificates/${batchId}/upload`, {
+  const data = await request<{ certificate: Certificate }>(`/certificates/${batchId}/upload`, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${getToken() || ''}`,
-    },
     body: formData,
   });
+  return data.certificate;
+};
 
-  const contentType = response.headers.get('content-type') || '';
-  const data = contentType.includes('application/json') ? await response.json() : await response.text();
+export const replaceCertificateInBatch = async (batchId: string, certificateId: string, payload: {
+  studentId?: string | null;
+  studentName: string;
+  studentCode: string;
+  file: File;
+}) => {
+  const formData = new FormData();
+  formData.append('file', payload.file);
+  if (payload.studentId) formData.append('studentId', payload.studentId);
+  formData.append('studentName', payload.studentName);
+  formData.append('studentCode', payload.studentCode);
 
-  if (!response.ok) {
-    throw new Error((typeof data === 'object' && data && 'message' in data ? String(data.message) : 'Upload failed'));
-  }
-
-  return (typeof data === 'object' && data && 'certificate' in data ? (data as { certificate: Certificate }).certificate : null) as Certificate;
+  const data = await request<{ certificate: Certificate }>(`/certificates/${batchId}/${certificateId}/upload`, {
+    method: 'PUT',
+    body: formData,
+  });
+  return data.certificate;
 };
 
 export const deleteCertificateFromBatch = async (batchId: string, certificateId: string) => {

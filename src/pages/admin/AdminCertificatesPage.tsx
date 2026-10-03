@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Award, FileText, Search, Download, ExternalLink } from 'lucide-react';
+import { Award, FileText, Search, Download, ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import BatchManager from '@/components/admin/BatchManager';
 import CertificateIssueDialog from '@/components/admin/CertificateIssueDialog';
-import { fetchBatches, fetchBatchCertificates, fetchBatchStudents, type Batch, type Certificate, type Student } from '@/lib/api';
+import { deleteCertificateFromBatch, fetchBatches, fetchBatchCertificates, fetchBatchStudents, type Batch, type Certificate, type Student } from '@/lib/api';
 
 const getInitials = (name: string) =>
   name
@@ -25,6 +25,7 @@ const CertificatesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(false);
   const [certificateDialogOpen, setCertificateDialogOpen] = useState(false);
+  const [editingCertificate, setEditingCertificate] = useState<Certificate | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const loadBatches = async () => {
@@ -90,6 +91,37 @@ const CertificatesPage: React.FC = () => {
     );
   }, [certificates, searchQuery]);
 
+  const eligibleStudents = useMemo(() => {
+    const certificateStudentIds = new Set(certificates.map((certificate) => certificate.studentId).filter(Boolean));
+    const certificateStudentCodes = new Set(
+      certificates.map((certificate) => certificate.studentCode?.toLowerCase()).filter(Boolean)
+    );
+
+    return students.filter((student) =>
+      !certificateStudentIds.has(student.id) &&
+      !certificateStudentCodes.has(student.studentId?.toLowerCase())
+    );
+  }, [certificates, students]);
+
+  const dialogStudents = editingCertificate
+    ? students.filter((student) =>
+        student.id === editingCertificate.studentId || student.studentId === editingCertificate.studentCode
+      )
+    : eligibleStudents;
+
+  const handleDeleteCertificate = async (certificate: Certificate) => {
+    if (!selectedBatchId || !window.confirm(`Delete the certificate for ${certificate.studentName}? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await deleteCertificateFromBatch(selectedBatchId, certificate.id);
+      setCertificates((current) => current.filter((item) => item.id !== certificate.id));
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to delete certificate');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -98,7 +130,10 @@ const CertificatesPage: React.FC = () => {
           <h2 className="text-2xl font-bold text-slate-900">Certificates</h2>
         </div>
         <Button
-          onClick={() => selectedBatchId && setCertificateDialogOpen(true)}
+          onClick={() => {
+            setEditingCertificate(null);
+            setCertificateDialogOpen(true);
+          }}
           disabled={!selectedBatchId}
           className="gap-2 bg-blue-600 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
@@ -194,24 +229,18 @@ const CertificatesPage: React.FC = () => {
                           </span>
 
 <div className="flex items-center gap-1">
-  <a
-    href={item.fileUrl}
-    target="_blank"
-    rel="noreferrer"
-    className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-blue-600"
-    aria-label={`View ${item.fileName}`}
-  >
-    <ExternalLink className="h-3.5 w-3.5" />
-  </a>
-  
-  <a
-    href={item.fileUrl}
-    download={item.fileName}
-    className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-blue-600"
-    aria-label={`Download ${item.fileName}`}
-  >
-    <Download className="h-3.5 w-3.5" />
-  </a>
+                          <a href={item.fileUrl} target="_blank" rel="noreferrer" title="View certificate" className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-blue-600" aria-label={`View ${item.fileName}`}>
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                          <a href={item.downloadUrl || item.fileUrl} download={item.fileName} title="Download certificate" className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-blue-600" aria-label={`Download ${item.fileName}`}>
+                            <Download className="h-3.5 w-3.5" />
+                          </a>
+                          <button type="button" onClick={() => { setEditingCertificate(item); setCertificateDialogOpen(true); }} title="Edit certificate" className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-blue-600" aria-label={`Edit ${item.fileName}`}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button type="button" onClick={() => handleDeleteCertificate(item)} title="Delete certificate" className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-red-50 hover:text-red-600" aria-label={`Delete ${item.fileName}`}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
 </div>
                         </div>
                       </div>
@@ -245,12 +274,18 @@ const CertificatesPage: React.FC = () => {
       {selectedBatchId && (
         <CertificateIssueDialog
           batchId={selectedBatchId}
-          students={students}
+          students={dialogStudents}
           open={certificateDialogOpen}
+          certificate={editingCertificate}
           onOpenChange={setCertificateDialogOpen}
-          onCertificateSaved={async () => {
-            const updated = await fetchBatchCertificates(selectedBatchId);
-            setCertificates(updated);
+          onCertificateSaved={(savedCertificate) => {
+            setCertificates((current) => {
+              const alreadyListed = current.some((item) => item.id === savedCertificate.id);
+              return alreadyListed
+                ? current.map((item) => item.id === savedCertificate.id ? savedCertificate : item)
+                : [savedCertificate, ...current];
+            });
+            setEditingCertificate(null);
           }}
         />
       )}
