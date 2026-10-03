@@ -111,6 +111,14 @@ export const createBatch = async (name: string, enrollmentDate?: string) => {
   return data.batch;
 };
 
+export const updateBatch = async (batchId: string, name: string, enrollmentDate?: string) => {
+  const data = await request<{ batch: Batch; message: string }>(`/batches/${batchId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ name, enrollmentDate }),
+  });
+  return data.batch;
+};
+
 export const fetchBatchStudents = async (batchId: string) => {
   const data = await request<{ students: Student[] }>(`/students/${batchId}`);
   return data.students;

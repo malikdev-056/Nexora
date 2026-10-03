@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, Trash2, Users, UserCheck, GraduationCap, Mail } from 'lucide-react';
+import { Search, Trash2, Users, UserCheck, GraduationCap, Mail, Pencil } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,6 +42,7 @@ const StudentsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [studentDialogOpen, setStudentDialogOpen] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const loadBatches = async () => {
@@ -50,6 +51,10 @@ const StudentsPage: React.FC = () => {
       setBatches(batchData);
       if (batchData.length > 0 && !selectedBatchId) {
         setSelectedBatchId(batchData[0].id);
+      }
+      if (batchData.length === 0) {
+        setSelectedBatchId('');
+        setStudents([]);
       }
       if (batchData.length > 0 && selectedBatchId) {
         const currentBatchExists = batchData.some((batch) => batch.id === selectedBatchId);
@@ -121,8 +126,7 @@ const StudentsPage: React.FC = () => {
 
     try {
       await deleteStudentFromBatch(selectedBatchId, student.id);
-      const updated = await fetchBatchStudents(selectedBatchId);
-      setStudents(updated);
+      setStudents((current) => current.filter((item) => item.id !== student.id));
     } catch (err) {
       console.error('Failed to delete student', err);
       alert(err instanceof Error ? err.message : 'Failed to delete student');
@@ -137,7 +141,10 @@ const StudentsPage: React.FC = () => {
           <h2 className="text-2xl font-bold text-slate-900">Students</h2>
         </div>
         <Button
-          onClick={() => selectedBatchId && setStudentDialogOpen(true)}
+          onClick={() => {
+            setEditingStudent(null);
+            setStudentDialogOpen(true);
+          }}
           disabled={!selectedBatchId}
           className="bg-blue-600 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
@@ -216,7 +223,7 @@ const StudentsPage: React.FC = () => {
                       <th className="px-5 py-3 font-medium">Email</th>
                       <th className="px-5 py-3 font-medium">Courses</th>
                       <th className="px-5 py-3 font-medium">Status</th>
-                      <th className="px-5 py-3 font-medium text-right">Action</th>
+                          <th className="px-5 py-3 font-medium text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -268,6 +275,17 @@ const StudentsPage: React.FC = () => {
                           <td className="px-5 py-3 text-right">
                             <button
                               type="button"
+                              aria-label={`Edit student ${student.name}`}
+                              onClick={() => {
+                                setEditingStudent(student);
+                                setStudentDialogOpen(true);
+                              }}
+                              className="mr-2 inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 transition-colors hover:bg-slate-100"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
                               aria-label={`Delete student ${student.name}`}
                               onClick={() => handleDeleteStudent(student)}
                               className="inline-flex items-center justify-center rounded-md border border-red-200 bg-red-50 p-2 text-red-600 transition-colors hover:bg-red-100"
@@ -312,10 +330,12 @@ const StudentsPage: React.FC = () => {
         <StudentFormDialog
           batchId={selectedBatchId}
           open={studentDialogOpen}
+          student={editingStudent}
           onOpenChange={setStudentDialogOpen}
           onStudentSaved={async () => {
             const updated = await fetchBatchStudents(selectedBatchId);
             setStudents(updated);
+            setEditingStudent(null);
           }}
         />
       )}

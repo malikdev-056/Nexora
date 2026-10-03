@@ -1,13 +1,14 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { User, Mail, Phone, Check, BookOpen, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { addStudentToBatch, type Student } from '@/lib/api';
+import { addStudentToBatch, updateStudentInBatch, type Student } from '@/lib/api';
 
 interface StudentFormDialogProps {
   batchId: string;
   open: boolean;
+  student?: Student | null;
   onOpenChange: (open: boolean) => void;
   onStudentSaved: () => void;
 }
@@ -37,11 +38,24 @@ const emptyForm = {
 
 type FieldErrors = { name?: boolean; email?: boolean; courses?: boolean };
 
-const StudentFormDialog: React.FC<StudentFormDialogProps> = ({ batchId, open, onOpenChange, onStudentSaved }) => {
+const StudentFormDialog: React.FC<StudentFormDialogProps> = ({ batchId, open, student, onOpenChange, onStudentSaved }) => {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+
+  useEffect(() => {
+    if (!open) return;
+    setForm(student ? {
+      name: student.name,
+      email: student.email || '',
+      phone: student.phone || '',
+      courses: student.courses?.length ? student.courses : student.course ? [student.course] : [],
+      status: student.status || 'active',
+    } : emptyForm);
+    setError('');
+    setFieldErrors({});
+  }, [open, student]);
 
   const selectedCourseText = useMemo(() => form.courses.join(', ') || 'No course selected', [form.courses]);
 
@@ -66,7 +80,7 @@ const StudentFormDialog: React.FC<StudentFormDialogProps> = ({ batchId, open, on
   const handleSubmit = async () => {
     const nextFieldErrors: FieldErrors = {
       name: !form.name.trim(),
-      email: !form.email.trim() || !emailIsValid,
+      email: Boolean(form.email.trim()) && !emailIsValid,
       courses: form.courses.length === 0,
     };
     setFieldErrors(nextFieldErrors);
@@ -79,17 +93,20 @@ const StudentFormDialog: React.FC<StudentFormDialogProps> = ({ batchId, open, on
     try {
       setSaving(true);
       setError('');
-      const createdStudent = await addStudentToBatch(batchId, {
+      const payload = {
         name: form.name.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
         courses: form.courses,
         course: form.courses[0],
         status: form.status,
-      });
+      };
+      const savedStudent = student
+        ? await updateStudentInBatch(batchId, student.id, payload)
+        : await addStudentToBatch(batchId, payload);
 
-      if (createdStudent?.studentId) {
-        alert(`Student added successfully. Student ID: ${createdStudent.studentId}`);
+      if (!student && savedStudent?.studentId) {
+        alert(`Student added successfully. Student ID: ${savedStudent.studentId}`);
       }
 
       resetForm();
@@ -112,8 +129,8 @@ const StudentFormDialog: React.FC<StudentFormDialogProps> = ({ batchId, open, on
     <Dialog open={open} onOpenChange={(next) => (!next ? handleClose() : onOpenChange(next))}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-slate-900">Add New Student</DialogTitle>
-          <p className="text-sm text-slate-500">Enter the student's details to enroll them in this batch.</p>
+          <DialogTitle className="text-xl font-bold text-slate-900">{student ? 'Edit Student' : 'Add New Student'}</DialogTitle>
+          <p className="text-sm text-slate-500">{student ? 'Update the student’s details.' : 'Enter the student’s details to enroll them in this batch.'}</p>
         </DialogHeader>
 
         <div className="grid gap-4 py-2 md:grid-cols-2">
@@ -138,7 +155,7 @@ const StudentFormDialog: React.FC<StudentFormDialogProps> = ({ batchId, open, on
 
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">
-              Email <span className="text-red-500">*</span>
+              Email <span className="text-slate-400">(optional)</span>
             </label>
             <div className="relative">
               <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -154,9 +171,7 @@ const StudentFormDialog: React.FC<StudentFormDialogProps> = ({ batchId, open, on
               />
             </div>
             {fieldErrors.email && (
-              <p className="mt-1 text-xs text-red-600">
-                {form.email.trim() ? 'Enter a valid email address' : 'Email is required'}
-              </p>
+              <p className="mt-1 text-xs text-red-600">Enter a valid email address</p>
             )}
           </div>
 
@@ -259,7 +274,7 @@ const StudentFormDialog: React.FC<StudentFormDialogProps> = ({ batchId, open, on
                 Saving...
               </span>
             ) : (
-              'Save Student'
+              student ? 'Save Changes' : 'Save Student'
             )}
           </Button>
         </DialogFooter>

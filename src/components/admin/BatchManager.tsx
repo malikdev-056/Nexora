@@ -1,15 +1,15 @@
 import React, { useMemo, useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { createBatch, deleteBatchById, type Batch } from '@/lib/api';
+import { createBatch, deleteBatchById, updateBatch, type Batch } from '@/lib/api';
 
 interface BatchManagerProps {
   batches: Batch[];
   selectedBatchId: string;
   onSelectBatch: (batchId: string) => void;
-  onBatchCreated: () => void;
+  onBatchCreated: () => void | Promise<void>;
 }
 
 const courseOptions = [
@@ -30,6 +30,7 @@ const BatchManager: React.FC<BatchManagerProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [batchName, setBatchName] = useState('');
   const [enrollmentDate, setEnrollmentDate] = useState('');
+  const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -49,11 +50,16 @@ const BatchManager: React.FC<BatchManagerProps> = ({
     try {
       setSaving(true);
       setError('');
-      await createBatch(trimmedName, enrollmentDate || undefined);
+      if (editingBatch) {
+        await updateBatch(editingBatch.id, trimmedName, enrollmentDate || undefined);
+      } else {
+        await createBatch(trimmedName, enrollmentDate || undefined);
+      }
       setBatchName('');
       setEnrollmentDate('');
+      setEditingBatch(null);
       setIsOpen(false);
-      onBatchCreated();
+      await onBatchCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create batch');
     } finally {
@@ -72,10 +78,28 @@ const BatchManager: React.FC<BatchManagerProps> = ({
 
     try {
       await deleteBatchById(batch.id);
-      onBatchCreated();
+      await onBatchCreated();
     } catch (err) {
       console.error('Failed to delete batch', err);
       alert(err instanceof Error ? err.message : 'Failed to delete batch');
+    }
+  };
+
+  const openEditBatch = (batch: Batch) => {
+    setEditingBatch(batch);
+    setBatchName(batch.name);
+    setEnrollmentDate(batch.enrollmentDate ? new Date(batch.enrollmentDate).toISOString().slice(0, 10) : '');
+    setError('');
+    setIsOpen(true);
+  };
+
+  const closeDialog = (open: boolean) => {
+    setIsOpen(open);
+    if (!open && !saving) {
+      setEditingBatch(null);
+      setBatchName('');
+      setEnrollmentDate('');
+      setError('');
     }
   };
 
@@ -116,6 +140,17 @@ const BatchManager: React.FC<BatchManagerProps> = ({
 
               <button
                 type="button"
+                aria-label={`Edit batch ${batch.name}`}
+                onClick={() => openEditBatch(batch)}
+                className={`rounded-md p-2 transition-colors ${
+                  selectedBatchId === batch.id ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+
+              <button
+                type="button"
                 aria-label={`Delete batch ${batch.name}`}
                 onClick={() => handleDeleteBatch(batch)}
                 className={`rounded-md p-2 transition-colors ${
@@ -133,10 +168,10 @@ const BatchManager: React.FC<BatchManagerProps> = ({
         )}
       </div>
 
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <Dialog open={isOpen} onOpenChange={closeDialog}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Create New Batch</DialogTitle>
+            <DialogTitle>{editingBatch ? 'Edit Batch' : 'Create New Batch'}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
@@ -170,7 +205,7 @@ const BatchManager: React.FC<BatchManagerProps> = ({
               Cancel
             </Button>
             <Button onClick={handleCreateBatch} disabled={saving} className="bg-blue-600 text-white hover:bg-blue-700">
-              {saving ? 'Creating...' : 'Create Batch'}
+              {saving ? 'Saving...' : editingBatch ? 'Save Changes' : 'Create Batch'}
             </Button>
           </DialogFooter>
         </DialogContent>
